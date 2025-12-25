@@ -128,15 +128,25 @@ class TestSessionLifecycle:
         """Test creating a session and registering it."""
         from core.registry import SessionRegistry
         from core.session import ModelQuerySession
+        from unittest.mock import MagicMock
 
         registry = SessionRegistry()
 
-        # Create session using __new__ to skip complex __init__
-        session = ModelQuerySession.__new__(ModelQuerySession)
-        session.session_id = "integration-test-1"
-        session._stop_requested = False
-        session._message_callback = None
-        registry.register("integration-test-1", session)
+        # Create session with all required args mocked
+        session = ModelQuerySession(
+            session_id="integration-test-1",
+            raw_data={
+                "target_focal_method": "testMethod",
+                "target_focal_file": "Test.java",
+                "test_desc": "desc",
+                "project_path": "/path",
+                "focal_file_path": "/path/Test.java",
+            },
+            writer=MagicMock(),
+            executor=MagicMock(),
+            junit_version=5,
+        )
+        registry.register(session)
 
         # Verify session is retrievable
         retrieved = registry.get("integration-test-1")
@@ -147,15 +157,25 @@ class TestSessionLifecycle:
         registry.remove("integration-test-1")
         assert registry.get("integration-test-1") is None
 
-    def test_session_stop_and_message_flow(self):
-        """Test session stop mechanism with message updates."""
+    def test_session_stop_mechanism(self):
+        """Test session stop mechanism."""
         from core.session import ModelQuerySession
+        from unittest.mock import MagicMock
 
-        # Create session using __new__
-        session = ModelQuerySession.__new__(ModelQuerySession)
-        session.session_id = "stop-test"
-        session._stop_requested = False
-        session._message_callback = None
+        # Create session with all required args
+        session = ModelQuerySession(
+            session_id="stop-test",
+            raw_data={
+                "target_focal_method": "testMethod",
+                "target_focal_file": "Test.java",
+                "test_desc": "desc",
+                "project_path": "/path",
+                "focal_file_path": "/path/Test.java",
+            },
+            writer=MagicMock(),
+            executor=MagicMock(),
+            junit_version=5,
+        )
 
         # Initially not stopped
         assert session.should_stop() is False
@@ -166,28 +186,40 @@ class TestSessionLifecycle:
         # Verify stopped
         assert session.should_stop() is True
 
-    def test_message_update_flow(self):
-        """Test message update callback flow."""
+    def test_registry_list_active_ids(self):
+        """Test listing active session IDs."""
+        from core.registry import SessionRegistry
         from core.session import ModelQuerySession
+        from unittest.mock import MagicMock
 
-        received_messages = []
+        registry = SessionRegistry()
 
-        def message_handler(msg):
-            received_messages.append(msg)
+        # Initially empty
+        assert list(registry.list_active_ids()) == []
 
-        # Create session using __new__
-        session = ModelQuerySession.__new__(ModelQuerySession)
-        session.session_id = "msg-test"
-        session._stop_requested = False
-        session._message_callback = None
-        session.set_message_callback(message_handler)
+        # Add sessions
+        for i in range(3):
+            session = ModelQuerySession(
+                session_id=f"session-{i}",
+                raw_data={
+                    "target_focal_method": "testMethod",
+                    "target_focal_file": "Test.java",
+                    "test_desc": "desc",
+                    "project_path": "/path",
+                    "focal_file_path": "/path/Test.java",
+                },
+                writer=MagicMock(),
+                executor=MagicMock(),
+                junit_version=5,
+            )
+            registry.register(session)
 
-        # Send messages
-        session.update_message("First message")
-        session.update_message("Second message")
+        # Verify 3 sessions
+        assert len(list(registry.list_active_ids())) == 3
 
-        assert len(received_messages) == 2
-        assert received_messages[0] == "First message"
+        # Remove one
+        registry.remove("session-1")
+        assert len(list(registry.list_active_ids())) == 2
 
 
 class TestRequestValidationFlow:
