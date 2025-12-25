@@ -258,8 +258,9 @@ class TestAgentRemoveSingleLineNumber:
         """Test removing a single line number."""
         from agents import Agent
 
+        agent = Agent.__new__(Agent)
         line = "42:     def foo():"
-        result = Agent.remove_single_line_number(line)
+        result = agent.remove_single_line_number(line)
 
         assert result == "    def foo():"
 
@@ -267,7 +268,8 @@ class TestAgentRemoveSingleLineNumber:
         """Test line without line number."""
         from agents import Agent
 
+        agent = Agent.__new__(Agent)
         line = "def foo():"
-        result = Agent.remove_single_line_number(line)
+        result = agent.remove_single_line_number(line)
 
         assert result == "def foo():"
