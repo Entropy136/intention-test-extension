@@ -135,11 +135,42 @@ function addSystemNotice(message) {
     addMessage(message, 'system', { senderType: 'system' });
 }
 
+/**
+ * Sanitize HTML to prevent XSS attacks.
+ * Allows safe tags like code, pre, div, span, etc. while removing dangerous ones.
+ */
+function sanitizeHtml(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+
+    // Remove dangerous elements and attributes
+    const dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'];
+    const dangerousAttrs = ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit'];
+
+    dangerousTags.forEach(tag => {
+        template.content.querySelectorAll(tag).forEach(el => el.remove());
+    });
+
+    template.content.querySelectorAll('*').forEach(el => {
+        dangerousAttrs.forEach(attr => el.removeAttribute(attr));
+        // Remove javascript: URLs
+        if (el.hasAttribute('href') && el.getAttribute('href').toLowerCase().startsWith('javascript:')) {
+            el.removeAttribute('href');
+        }
+        if (el.hasAttribute('src') && el.getAttribute('src').toLowerCase().startsWith('javascript:')) {
+            el.removeAttribute('src');
+        }
+    });
+
+    return template.innerHTML;
+}
+
 function createMessageContent(message, isHtml) {
     const messageContentElement = document.createElement('div');
     messageContentElement.className = 'message-content';
     if (isHtml) {
-        messageContentElement.innerHTML = message;
+        // Sanitize HTML to prevent XSS
+        messageContentElement.innerHTML = sanitizeHtml(message);
     } else {
         messageContentElement.textContent = message;
     }
