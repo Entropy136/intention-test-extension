@@ -48,6 +48,10 @@ ignore = [
     "E722",   # bare except
     "F401",   # imported but unused
     "F841",   # local variable assigned but never used
+    "W291",   # trailing whitespace
+    "W293",   # blank line contains whitespace
+    "I001",   # import block is un-sorted or un-formatted
+    "UP035",  # import from collections.abc instead of typing
 ]
 
 [tool.ruff.lint.per-file-ignores]
