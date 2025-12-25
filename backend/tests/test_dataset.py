@@ -30,8 +30,9 @@ Verify the parse method works correctly.
 
         assert "objective" in result or "Objective" in str(result)
 
-    def test_divide_desc_missing_section(self):
-        """Test parsing a description missing some sections."""
+    def test_divide_desc_missing_section_raises(self):
+        """Test that missing sections raise AssertionError."""
+        import pytest
         from unittest.mock import MagicMock
         from dataset import Dataset
 
@@ -44,9 +45,9 @@ Just test something.
 # Expected Results
 It should work."""
 
-        result = dataset.divide_desc(desc)
-        # Should not raise an exception
-        assert result is not None
+        # divide_desc requires all three sections
+        with pytest.raises(AssertionError):
+            dataset.divide_desc(desc)
 
 
 class TestDatasetAddNewlineChar:
