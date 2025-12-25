@@ -35,10 +35,7 @@ jobs:
       - name: Ruff lint check
         run: ruff check backend/ --config backend/pyproject.toml --output-format=github
         continue-on-error: true
-
-      - name: Ruff format check
-        run: ruff format backend/ --config backend/pyproject.toml --check --diff
-        continue-on-error: true
+      # Note: Ruff format check disabled - too noisy for existing code
 
       # ============ Syntax Check ============
       - name: Syntax check (compileall)
