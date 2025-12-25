@@ -1,0 +1,59 @@
+# Backend Python Project Configuration
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
+[project]
+name = "intention-test-backend"
+version = "0.1.0"
+description = "Python backend for Intention Test VS Code Extension"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "data/*",
+    "__pycache__/*",
+    "*.ipynb",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long
+    "E402",   # module level import not at top of file
+    "E722",   # bare except
+    "F401",   # imported but unused
+    "F841",   # local variable assigned but never used
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["F401", "F811"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"

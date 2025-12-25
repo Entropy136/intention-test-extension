@@ -1,5 +1,8 @@
 # Intention Test VS Code Extension
 
+[![Python CI](https://github.com/Entropy136/intention-test-extension/actions/workflows/python-ci.yml/badge.svg)](https://github.com/Entropy136/intention-test-extension/actions/workflows/python-ci.yml)
+[![codecov](https://codecov.io/gh/Entropy136/intention-test-extension/graph/badge.svg)](https://codecov.io/gh/Entropy136/intention-test-extension)
+
 ## How to Run
 
 > [!NOTE]
@@ -22,17 +25,23 @@ And the following tools for source code analyzation (manual download by user):
 And an [**OpenAI API key**](https://platform.openai.com/docs/guides/production-best-practices/api-keys) to access GPT-4o.
 
 ### Environment setup (macOS)
+
 - Configure Java 8
+
   ```bash
   echo 'export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-1.8.jdk/Contents/Home' >> ~/.zshrc
   echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> ~/.zshrc
   source ~/.zshrc
   ```
+
 - Install Maven (user action):
+
   ```bash
   brew install maven
   ```
+
 - Install CodeQL CLI (user downloads zip, then):
+
   ```bash
   mkdir -p ~/.local/apps ~/.local/bin
   unzip -q -o ~/Code/codeql-osx64.zip -d ~/.local/apps
@@ -58,9 +67,9 @@ docker run -d --name intention-test \
 ```
 
 **API 端点配置**：
-- 默认使用 `https://api.chatanywhere.tech/v1`（国内推荐，延迟更低）
-- 国外用户可使用：`https://api.chatanywhere.org/v1`
-- 使用官方 OpenAI API：`https://api.openai.com/v1`
++ 默认使用 `https://api.chatanywhere.tech/v1`（国内推荐，延迟更低）
++ 国外用户可使用：`https://api.chatanywhere.org/v1`
++ 使用官方 OpenAI API：`https://api.openai.com/v1`
 
 The container writes `backend/config.ini` automatically and starts `python server.py --port 8080`.  
 To use another port, change the mapping and environment variable:
@@ -88,9 +97,9 @@ docker run -d --name intention-test-dev \
   vhahahav/intention_test:latest
 ```
 
-- `/app` inside the container mirrors your host repo; edits on the host take effect immediately.
-- Ensure the host directory grants read/write permissions to UID/GID `1000:1000` (container user `vscode`).
-- If necessary, add `-u $(id -u):$(id -g)` so the container process runs with your host UID/GID.
++ `/app` inside the container mirrors your host repo; edits on the host take effect immediately.
++ Ensure the host directory grants read/write permissions to UID/GID `1000:1000` (container user `vscode`).
++ If necessary, add `-u $(id -u):$(id -g)` so the container process runs with your host UID/GID.
 
 ### Start the backend locally (alternative)
 
@@ -137,7 +146,7 @@ change the port in **settings of the new Extension Development Host window** via
 
 ### Use the demo project to try our tool
 
-Now the tool only supports running on the demo project `backend/data/spark` inside this repository. 
+Now the tool only supports running on the demo project `backend/data/spark` inside this repository.
 
 ```base
 mkdir -p backend/data/ && cd backend/data/
@@ -145,7 +154,9 @@ git clone git@github.com:perwendel/spark.git
 ```
 
 ### Provide a minimal valid test description (template)
+
 Paste a valid description in the extension panel (required by backend parser):
+
 ```text
 # Objective
 验证 `ClassName.methodName(ParamTypes...)` 在典型输入下的正确行为。
@@ -162,9 +173,10 @@ Paste a valid description in the extension panel (required by backend parser):
 ```
 
 ### Troubleshooting
+
 - If the extension shows “Waiting for request...”, ensure backend is running and port matches `Intention Test: Port`.
-- If you see JSON errors with `HTTP/1.0 5xx`, check backend console for missing config (OpenAI url/apikey, CodeQL path, JAVA_HOME).
-- If OpenAI API returns 429 (quota), the backend will surface a readable error instead of crashing; update your key/plan to proceed.
++ If you see JSON errors with `HTTP/1.0 5xx`, check backend console for missing config (OpenAI url/apikey, CodeQL path, JAVA_HOME).
++ If OpenAI API returns 429 (quota), the backend will surface a readable error instead of crashing; update your key/plan to proceed.
 
 ## Acknowledgements
 

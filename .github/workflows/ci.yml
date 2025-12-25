@@ -47,7 +47,9 @@ jobs:
       - name: Compile (if available)
         run: npm run compile --if-present
 
-      # Test step intentionally omitted until test harness is ready
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
 
       - name: Upload build output (if present)
         if: ${{ hashFiles('out/**') != '' }}

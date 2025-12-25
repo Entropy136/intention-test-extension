@@ -1,0 +1,14 @@
+// VS Code Extension Test Configuration
+// https://code.visualstudio.com/api/working-with-extensions/testing-extension
+
+import { defineConfig } from '@vscode/test-cli';
+
+export default defineConfig({
+    files: 'out/test/**/*.test.js',
+    version: 'stable',
+    workspaceFolder: '.',
+    mocha: {
+        ui: 'tdd',
+        timeout: 20000
+    }
+});
