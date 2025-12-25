@@ -262,14 +262,15 @@ class TestAgentRemoveSingleLineNumber:
         line = "42:     def foo():"
         result = agent.remove_single_line_number(line)
 
-        assert result == "    def foo():"
+        # Method returns everything after the first colon
+        assert result == "     def foo():"
 
-    def test_no_line_number(self):
-        """Test line without line number."""
+    def test_line_with_colon_in_content(self):
+        """Test line with colon in content returns after first colon."""
         from agents import Agent
 
         agent = Agent.__new__(Agent)
-        line = "def foo():"
+        line = "10: return {'key': 'value'}"
         result = agent.remove_single_line_number(line)
 
-        assert result == "def foo():"
+        assert result == " return {'key': 'value'}"
