@@ -189,3 +189,85 @@ Another objective
 1. Some result
 """
         assert agent.check_generation(desc) is False
+
+
+class TestAgentSetCancelCheck:
+    """Test Agent.set_cancel_check method."""
+
+    def test_set_cancel_check_with_function(self):
+        """Test setting a cancel check function."""
+        from agents import Agent
+
+        agent = Agent.__new__(Agent)
+        agent.cancel_check = lambda: False
+
+        called = [False]
+
+        def my_checker():
+            called[0] = True
+            return False
+
+        agent.set_cancel_check(my_checker)
+        agent.cancel_check()
+
+        assert called[0] is True
+
+    def test_set_cancel_check_with_none(self):
+        """Test setting cancel check to None resets to default."""
+        from agents import Agent
+
+        agent = Agent.__new__(Agent)
+        agent.cancel_check = lambda: True
+
+        agent.set_cancel_check(None)
+        result = agent.cancel_check()
+
+        assert result is False
+
+
+class TestAgentCheckCancel:
+    """Test Agent._check_cancel method."""
+
+    def test_check_cancel_raises_when_cancelled(self):
+        """Test that _check_cancel raises GenerationCancelled."""
+        import pytest
+        from agents import Agent
+        from core.exceptions import GenerationCancelled
+
+        agent = Agent.__new__(Agent)
+        agent.cancel_check = lambda: True
+
+        with pytest.raises(GenerationCancelled):
+            agent._check_cancel()
+
+    def test_check_cancel_does_nothing_when_not_cancelled(self):
+        """Test that _check_cancel does nothing when not cancelled."""
+        from agents import Agent
+
+        agent = Agent.__new__(Agent)
+        agent.cancel_check = lambda: False
+
+        # Should not raise
+        agent._check_cancel()
+
+
+class TestAgentRemoveSingleLineNumber:
+    """Test Agent.remove_single_line_number method."""
+
+    def test_removes_line_number(self):
+        """Test removing a single line number."""
+        from agents import Agent
+
+        line = "42:     def foo():"
+        result = Agent.remove_single_line_number(line)
+
+        assert result == "    def foo():"
+
+    def test_no_line_number(self):
+        """Test line without line number."""
+        from agents import Agent
+
+        line = "def foo():"
+        result = Agent.remove_single_line_number(line)
+
+        assert result == "def foo():"
