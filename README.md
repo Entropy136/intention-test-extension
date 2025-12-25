@@ -26,7 +26,7 @@ And an [**OpenAI API key**](https://platform.openai.com/docs/guides/production-b
 
 ### Environment setup (macOS)
 
-- Configure Java 8
++ Configure Java 8
 
   ```bash
   echo 'export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-1.8.jdk/Contents/Home' >> ~/.zshrc
@@ -34,13 +34,13 @@ And an [**OpenAI API key**](https://platform.openai.com/docs/guides/production-b
   source ~/.zshrc
   ```
 
-- Install Maven (user action):
++ Install Maven (user action):
 
   ```bash
   brew install maven
   ```
 
-- Install CodeQL CLI (user downloads zip, then):
++ Install CodeQL CLI (user downloads zip, then):
 
   ```bash
   mkdir -p ~/.local/apps ~/.local/bin
@@ -55,7 +55,20 @@ Note: The repository also provides `setup/MACOS.sh` to help configure environmen
 
 ### Start the backend via Docker (recommended)
 
-Pull the latest image from Docker Hub and start the container:
+**Quick start with docker-compose:**
+
+```bash
+# Set your OpenAI API key and start
+OPENAI_API_KEY=sk-xxx docker-compose up -d
+
+# View logs
+docker-compose logs -f backend
+
+# Stop
+docker-compose down
+```
+
+**Or pull from Docker Hub:**
 
 ```bash
 docker pull vhahahav/intention_test:latest
@@ -67,6 +80,7 @@ docker run -d --name intention-test \
 ```
 
 **API 端点配置**：
+
 + 默认使用 `https://api.chatanywhere.tech/v1`（国内推荐，延迟更低）
 + 国外用户可使用：`https://api.chatanywhere.org/v1`
 + 使用官方 OpenAI API：`https://api.openai.com/v1`
@@ -174,7 +188,8 @@ Paste a valid description in the extension panel (required by backend parser):
 
 ### Troubleshooting
 
-- If the extension shows “Waiting for request...”, ensure backend is running and port matches `Intention Test: Port`.
++ If the extension shows “Waiting for request...”, ensure backend is running and port matches `Intention Test: Port`.
+
 + If you see JSON errors with `HTTP/1.0 5xx`, check backend console for missing config (OpenAI url/apikey, CodeQL path, JAVA_HOME).
 + If OpenAI API returns 429 (quota), the backend will surface a readable error instead of crashing; update your key/plan to proceed.
 
