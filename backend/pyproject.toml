@@ -47,10 +47,13 @@ ignore = [
     "E402",   # module level import not at top of file
     "E722",   # bare except
     "F401",   # imported but unused
+    "F541",   # f-string without placeholders
     "F841",   # local variable assigned but never used
     "W291",   # trailing whitespace
     "W293",   # blank line contains whitespace
     "I001",   # import block is un-sorted or un-formatted
+    "UP006",  # use dict instead of Dict
+    "UP008",  # use super() instead of super(__class__, self)
     "UP035",  # import from collections.abc instead of typing
 ]
 
