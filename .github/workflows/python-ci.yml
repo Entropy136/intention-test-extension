@@ -33,11 +33,11 @@ jobs:
 
       # ============ Ruff Code Quality ============
       - name: Ruff lint check
-        run: ruff check backend/ --output-format=github
+        run: ruff check backend/ --config backend/pyproject.toml --output-format=github
         continue-on-error: true
 
       - name: Ruff format check
-        run: ruff format backend/ --check --diff
+        run: ruff format backend/ --config backend/pyproject.toml --check --diff
         continue-on-error: true
 
       # ============ Syntax Check ============

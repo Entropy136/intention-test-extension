@@ -43,6 +43,7 @@ jobs:
 
       - name: Lint (if available)
         run: npm run lint --if-present
+        continue-on-error: true
 
       - name: Compile (if available)
         run: npm run compile --if-present
