@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-cov ruff
+          pip install pytest pytest-cov ruff nltk
           python -c "import nltk; nltk.download('stopwords', quiet=True)"
 
       # ============ Ruff Code Quality ============
