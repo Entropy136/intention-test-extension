@@ -119,3 +119,181 @@ class TestMockedAPIFlow:
             )
 
             assert response.choices[0].message.content == '```java\npublic class Test {}\n```'
+
+
+class TestSessionLifecycle:
+    """Integration tests for complete session lifecycle."""
+
+    def test_session_creation_and_registration(self):
+        """Test creating a session and registering it."""
+        from core.registry import SessionRegistry
+        from core.session import ModelQuerySession
+
+        registry = SessionRegistry()
+
+        # Create and register session
+        session = ModelQuerySession(session_id="integration-test-1")
+        registry.register("integration-test-1", session)
+
+        # Verify session is retrievable
+        retrieved = registry.get("integration-test-1")
+        assert retrieved is session
+        assert retrieved.session_id == "integration-test-1"
+
+        # Cleanup
+        registry.remove("integration-test-1")
+        assert registry.get("integration-test-1") is None
+
+    def test_session_stop_and_message_flow(self):
+        """Test session stop mechanism with message updates."""
+        from core.session import ModelQuerySession
+        from core.messages import StatusMessage
+
+        # Create session
+        session = ModelQuerySession(session_id="stop-test")
+
+        # Initially not stopped
+        assert session.should_stop() is False
+
+        # Request stop
+        session.request_stop()
+
+        # Verify stopped
+        assert session.should_stop() is True
+
+    def test_message_update_flow(self):
+        """Test message update callback flow."""
+        from core.session import ModelQuerySession
+
+        received_messages = []
+
+        def message_handler(msg):
+            received_messages.append(msg)
+
+        # Create session with handler
+        session = ModelQuerySession(session_id="msg-test")
+        session.set_message_callback(message_handler)
+
+        # Send messages
+        session.update_message("First message")
+        session.update_message("Second message")
+
+        assert len(received_messages) == 2
+        assert received_messages[0] == "First message"
+
+
+class TestRequestValidationFlow:
+    """Integration tests for HTTP request validation flow."""
+
+    def test_valid_query_payload_flow(self):
+        """Test complete validation of a valid query payload."""
+        from app.server import validate_query_payload
+
+        payload = {
+            "type": "query",
+            "session_id": "valid-session",
+            "data": {
+                "target_focal_method": "testMethod",
+                "target_focal_file": "Test.java",
+                "test_desc": "Test description",
+                "project_path": "/path/to/project",
+                "focal_file_path": "/path/to/Test.java",
+            }
+        }
+
+        session_id, data = validate_query_payload(payload)
+
+        assert session_id == "valid-session"
+        assert data["target_focal_method"] == "testMethod"
+
+    def test_invalid_payload_flow(self):
+        """Test validation rejects invalid payloads."""
+        import pytest
+        from app.server import validate_query_payload
+
+        # Missing required fields
+        payload = {
+            "type": "query",
+            "data": {"target_focal_method": "test"}
+        }
+
+        with pytest.raises(ValueError):
+            validate_query_payload(payload)
+
+
+class TestDatasetProcessingFlow:
+    """Integration tests for dataset processing flow."""
+
+    def test_description_parsing_flow(self):
+        """Test complete description parsing flow."""
+        from dataset import Dataset
+
+        dataset = Dataset.__new__(Dataset)
+        dataset.configs = type('obj', (object,), {'project_name': 'test'})()
+
+        desc = """# Objective
+Test the add method
+
+# Preconditions
+Calculator is initialized
+
+# Expected Results
+Returns correct sum"""
+
+        obj, pre, exp = dataset.divide_desc(desc)
+
+        assert "add method" in obj
+        assert "initialized" in pre
+        assert "correct sum" in exp
+
+
+class TestEndToEndCodeExtraction:
+    """End-to-end tests for code extraction pipeline."""
+
+    def test_multiblock_code_extraction(self):
+        """Test extracting code when multiple blocks exist."""
+        with patch('agents.OpenAI'):
+            from agents import TestGenAgent
+
+            agent = TestGenAgent.__new__(TestGenAgent)
+
+            response = '''I'll provide two test methods:
+
+```java
+@Test
+public void testPositive() {
+    assertEquals(5, calc.add(2, 3));
+}
+```
+
+And another one:
+
+```java
+@Test
+public void testNegative() {
+    assertEquals(-1, calc.add(2, -3));
+}
+```
+'''
+            # Should extract the first code block
+            code = agent.extract_code_from_response(response)
+            assert 'testPositive' in code
+
+    def test_code_with_line_numbers(self):
+        """Test processing code that has line numbers."""
+        with patch('agents.OpenAI'):
+            from agents import Agent
+
+            agent = Agent.__new__(Agent)
+
+            code_with_numbers = """1: public class Test {
+2:     @Test
+3:     public void test() {
+4:         assertTrue(true);
+5:     }
+6: }"""
+
+            result = agent.remove_line_numbers(code_with_numbers)
+
+            assert '1:' not in result
+            assert 'public class Test' in result
