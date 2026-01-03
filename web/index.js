@@ -193,7 +193,11 @@ function createMessageContent(message, isHtml) {
     const messageContentElement = document.createElement('div');
     messageContentElement.className = 'message-content';
     if (isHtml) {
-        messageContentElement.innerHTML = message;
+        if (typeof DOMPurify === 'undefined') {
+            messageContentElement.textContent = message;
+        } else {
+            messageContentElement.innerHTML = DOMPurify.sanitize(message, { USE_PROFILES: { html: true } });
+        }
     } else {
         messageContentElement.textContent = message;
     }
