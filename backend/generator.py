@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import json
 import os
 import re
+from typing import TYPE_CHECKING
 
-from pyexpat.errors import messages
+if TYPE_CHECKING:
+    from server import ModelQuerySession
 
-from core.session import ModelQuerySession
-from core.exceptions import GenerationCancelled
 from configs import Configs
 from agents import TestGenAgent, TestRefineAgent
 from test_case_runner import TestCaseRunner
+
+
+class GenerationCancelled(Exception):
+    """Raised when a running generation session is cancelled."""
 
 
 class IntentionTester:
@@ -22,12 +28,9 @@ class IntentionTester:
         self.test_runner = TestCaseRunner(configs, configs.test_case_run_log_dir)
         self.generation_with_refine_log = []  # [(test_status, prompt, test_case)]
         self.query_session: ModelQuerySession | None = None
-        self._cancel_check = lambda: False
-        self._apply_cancel_hook()
 
     def connect_to_request_session(self, query_session: ModelQuerySession):
         self.query_session = query_session
-        self._apply_cancel_hook()
 
     def update_messages_to_remote(self, messages):
         # TODO notify front-end for messages, maybe trasmit full (instead of transmit update only)?
@@ -44,7 +47,6 @@ class IntentionTester:
                                        prohibit_fact: bool = False, query_session: ModelQuerySession | None = None):
         self.generation_with_refine_log = []
         self.query_session = query_session
-        self._apply_cancel_hook()
         self._ensure_not_cancelled()
 
         target_test_class_name = target_test_case_path.split('/')[-1].replace('.java', '')
@@ -120,6 +122,7 @@ class IntentionTester:
             return error_msg
 
         compile_log, test_log, compile_success, execute_success = self.test_runner.compile_and_execute_test_case(test_case, test_case_path) 
+        self._ensure_not_cancelled()
 
         if not compile_success:
             error_msg = _extract_error_msg(compile_log)
@@ -149,11 +152,3 @@ class IntentionTester:
             test_status = 'success'
 
         return error_msg, test_status
-
-    def _apply_cancel_hook(self):
-        def cancel_check() -> bool:
-            return bool(self.query_session and self.query_session.should_stop())
-
-        self._cancel_check = cancel_check
-        self.test_gen_agent.set_cancel_check(cancel_check)
-        self.test_refine_agent.set_cancel_check(cancel_check)

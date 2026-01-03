@@ -9,3 +9,7 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.venv/**
+original/**
+classmates/**
+pr_candidate/**
