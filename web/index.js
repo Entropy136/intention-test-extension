@@ -1,6 +1,7 @@
 const noMessagePrompt = document.getElementById('no-message');
 const chatContainer = document.getElementById('chat-container');
 const toolbar = document.getElementById('toolbar');
+const statusPill = document.querySelector('.status-pill');
 const body = document.body;
 const SCROLL_IDLE_WINDOW_MS = 3000;
 const defaultNoMessageMarkup = noMessagePrompt.innerHTML;
@@ -15,21 +16,24 @@ const SessionState = {
     STOPPED: 'stopped'
 };
 
-const OPEN_CODE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="#5f6368"><path d="M189.06-113.3q-31 0-53.38-22.38-22.38-22.38-22.38-53.38v-581.88q0-31.06 22.38-53.49 22.38-22.43 53.38-22.43H466v75.92H189.06v581.88h581.88V-466h75.92v276.94q0 31-22.43 53.38Q802-113.3 770.94-113.3H189.06Zm201.08-223.37-52.81-53.47 380.81-380.8H532.67v-75.92h314.19v314.19h-75.92v-184.8l-380.8 380.8Z"></path></svg>';
-const RESTART_ICON = '<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="#5f6368"><path d="M480-100q-70.77 0-132.61-26.77-61.85-26.77-107.85-72.77-46-46-72.77-107.85Q140-369.23 140-440h60q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720h-10.62l63.54 63.54-42.15 43.38-136.92-137.3 137.69-137.31 42.15 43.38L469.38-780H480q70.77 0 132.61 26.77 61.85 26.77 107.85 72.77 46 46 72.77 107.85Q820-510.77 820-440q0 70.77-26.77 132.61-26.77 61.85-72.77 107.85-46 46-107.85 72.77Q550.77-100 480-100Z"/></svg>';
-
 let messageCount = 0;
 let lastUserScrollTime = Date.now();
 let sessionState = SessionState.IDLE;
+let scrollLockEnabled = false;
 
 const canConnectToVsCode = typeof acquireVsCodeApi === 'function';
 if (canConnectToVsCode) {
     window.vscode = acquireVsCodeApi();
 }
 
+// 初始化时将 lastUserScrollTime 设为过去，方便首条消息也能自动滚动
+lastUserScrollTime = Date.now() - SCROLL_IDLE_WINDOW_MS - 100;
+
 const toolbarHandlers = {
     'clear-chat': requestClearConversation,
-    'stop-run': requestStopConversation
+    'stop-run': requestStopConversation,
+    'jump-latest': scrollToLatest,
+    'toggle-scroll-lock': toggleScrollLock
 };
 
 toolbar?.querySelectorAll('[data-action]').forEach((button) => {
@@ -40,26 +44,35 @@ toolbar?.querySelectorAll('[data-action]').forEach((button) => {
     }
 });
 updateToolbarState();
+reflectStatusPill();
 updatePlaceholderVisibility();
 
 const updateLastScrollTime = () => {
     lastUserScrollTime = Date.now();
 };
 
-body.addEventListener('wheel', updateLastScrollTime, { passive: true });
-body.addEventListener('mousedown', updateLastScrollTime);
+window.addEventListener('wheel', updateLastScrollTime, { passive: true });
+window.addEventListener('mousedown', updateLastScrollTime);
+window.addEventListener('scroll', updateLastScrollTime, { passive: true });
+window.addEventListener('touchstart', updateLastScrollTime, { passive: true });
 
 window.addEventListener('message', handleIncomingMessage);
 
 function scrollToLatest() {
-    body.scrollTo({
-        top: body.scrollHeight,
+    window.scrollTo({
+        top: document.documentElement.scrollHeight,
         behavior: 'smooth'
     });
 }
 
 function maybeAutoScroll() {
-    if (Date.now() - lastUserScrollTime > SCROLL_IDLE_WINDOW_MS) {
+    if (scrollLockEnabled) {
+        return;
+    }
+    const nearBottom =
+        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 80;
+    const userIdle = Date.now() - lastUserScrollTime > SCROLL_IDLE_WINDOW_MS;
+    if (nearBottom || userIdle) {
         scrollToLatest();
     }
 }
@@ -92,6 +105,17 @@ function requestStopConversation() {
     window.vscode?.postMessage({ cmd: 'stop-run' });
 }
 
+function toggleScrollLock() {
+    scrollLockEnabled = !scrollLockEnabled;
+    updateToolbarState();
+    if (scrollLockEnabled) {
+        addSystemNotice('已锁定阅读，停止自动滚动。');
+    } else {
+        addSystemNotice('已解除锁定，将自动滚动到最新。');
+        maybeAutoScroll();
+    }
+}
+
 function setSessionState(nextState) {
     if (!nextState) {
         return;
@@ -102,6 +126,7 @@ function setSessionState(nextState) {
     }
     updateToolbarState();
     updatePlaceholderVisibility();
+    reflectStatusPill();
 }
 
 function updateToolbarState() {
@@ -114,6 +139,12 @@ function updateToolbarState() {
         const canStop = sessionState === SessionState.RUNNING;
         stopButton.disabled = !canStop;
         stopButton.textContent = isStopping ? '停止中…' : '停止';
+    }
+
+    const scrollLockButton = toolbar.querySelector('[data-action="toggle-scroll-lock"]');
+    if (scrollLockButton) {
+        scrollLockButton.dataset.locked = String(scrollLockEnabled);
+        scrollLockButton.textContent = scrollLockEnabled ? '解除锁定' : '阅读锁定';
     }
 }
 
@@ -135,42 +166,34 @@ function addSystemNotice(message) {
     addMessage(message, 'system', { senderType: 'system' });
 }
 
-/**
- * Sanitize HTML to prevent XSS attacks.
- * Allows safe tags like code, pre, div, span, etc. while removing dangerous ones.
- */
-function sanitizeHtml(html) {
-    const template = document.createElement('template');
-    template.innerHTML = html;
-
-    // Remove dangerous elements and attributes
-    const dangerousTags = ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'];
-    const dangerousAttrs = ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onchange', 'onsubmit'];
-
-    dangerousTags.forEach(tag => {
-        template.content.querySelectorAll(tag).forEach(el => el.remove());
-    });
-
-    template.content.querySelectorAll('*').forEach(el => {
-        dangerousAttrs.forEach(attr => el.removeAttribute(attr));
-        // Remove javascript: URLs
-        if (el.hasAttribute('href') && el.getAttribute('href').toLowerCase().startsWith('javascript:')) {
-            el.removeAttribute('href');
-        }
-        if (el.hasAttribute('src') && el.getAttribute('src').toLowerCase().startsWith('javascript:')) {
-            el.removeAttribute('src');
-        }
-    });
-
-    return template.innerHTML;
+function reflectStatusPill() {
+    if (!statusPill) {
+        return;
+    }
+    let text = 'Idle';
+    let stateAttr = 'idle';
+    if (sessionState === SessionState.RUNNING) {
+        text = 'Running';
+        stateAttr = 'running';
+    } else if (sessionState === SessionState.STOPPING) {
+        text = 'Stopping…';
+        stateAttr = 'stopping';
+    } else if (sessionState === SessionState.STOPPED) {
+        text = 'Stopped';
+        stateAttr = 'stopped';
+    }
+    statusPill.dataset.state = stateAttr;
+    const textNode = statusPill.querySelector('.status-text');
+    if (textNode) {
+        textNode.textContent = text;
+    }
 }
 
 function createMessageContent(message, isHtml) {
     const messageContentElement = document.createElement('div');
     messageContentElement.className = 'message-content';
     if (isHtml) {
-        // Sanitize HTML to prevent XSS
-        messageContentElement.innerHTML = sanitizeHtml(message);
+        messageContentElement.innerHTML = message;
     } else {
         messageContentElement.textContent = message;
     }
@@ -224,9 +247,7 @@ function addMessage(message, sender, options = {}) {
 function enhanceMessageElement(messageElement) {
     const codeBlocks = messageElement.querySelectorAll('pre code');
     codeBlocks.forEach((block) => {
-        block.querySelectorAll('.open-code-button, .restart-from-here-button').forEach((btn) => btn.remove());
         hljs.highlightElement(block);
-        attachCodeBlockActions(block, messageElement);
     });
 
     messageElement.querySelectorAll('code').forEach((inlineCode) => {
@@ -234,52 +255,6 @@ function enhanceMessageElement(messageElement) {
             hljs.highlightElement(inlineCode);
         }
     });
-}
-
-function attachCodeBlockActions(block, messageElement) {
-    const openButton = createIconButton('open-code-button', 'Open', OPEN_CODE_ICON);
-    openButton.onclick = (event) => {
-        event.stopPropagation();
-        const lang = detectLanguage(block);
-        window.vscode?.postMessage({ cmd: 'open-code', content: block.textContent, lang });
-    };
-
-    const restartButton = createIconButton('restart-from-here-button', 'Restart with this', RESTART_ICON);
-    restartButton.onclick = (event) => {
-        event.stopPropagation();
-        if (typeof messageElement.index === 'number') {
-            window.vscode?.postMessage({ cmd: 'restart-session', number: messageElement.index });
-        }
-    };
-
-    block.appendChild(openButton);
-    block.appendChild(restartButton);
-
-    block.onmouseenter = () => toggleActionButtons(block, true);
-    block.onmouseleave = () => toggleActionButtons(block, false);
-}
-
-function createIconButton(className, title, icon) {
-    const button = document.createElement('button');
-    button.className = className;
-    button.title = title;
-    button.innerHTML = icon;
-    return button;
-}
-
-function toggleActionButtons(block, visible) {
-    block.querySelectorAll('.open-code-button, .restart-from-here-button').forEach((button) => {
-        button.classList.toggle('show', visible);
-    });
-}
-
-function detectLanguage(block) {
-    for (const cls of block.classList) {
-        if (cls.startsWith('language-')) {
-            return cls.substring('language-'.length);
-        }
-    }
-    return undefined;
 }
 
 function showTypingAnimation(sender) {

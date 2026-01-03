@@ -40,8 +40,8 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Install Node dependencies (used for VS Code extension debugging)
-COPY package.json package-lock.json ./
-RUN npm ci --omit=optional
+COPY package.json ./
+RUN npm install --omit=optional
 
 # Copy source
 COPY . .

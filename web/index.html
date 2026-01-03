@@ -15,14 +15,20 @@
             <span class="name">Intention Test</span>
             <span class="tagline">LLM-based iterative test assistant</span>
         </div>
+        <div class="status-pill" aria-live="polite">
+            <span class="status-dot"></span>
+            <span class="status-text">Idle</span>
+        </div>
         <div class="toolbar-actions">
+            <button type="button" data-action="jump-latest">跳到最新</button>
+            <button type="button" data-action="toggle-scroll-lock" data-locked="false">阅读锁定</button>
             <button type="button" data-action="stop-run">停止</button>
             <button type="button" data-action="clear-chat">清空</button>
         </div>
     </header>
     <div id="no-message">
         <h1>Intention Test 🧪</h1>
-        <div>An LLM-based iterative test generator. <br /> Waiting for request...</div>
+        <div>An LLM-based iterative test generator. <br/> Waiting for request...</div>
     </div>
     <div id="chat-container"></div>
 </body>

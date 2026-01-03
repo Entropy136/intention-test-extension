@@ -1,5 +1,5 @@
 """
-Tests for core/messages.py message serialization classes.
+Tests for server.py message serialization classes.
 """
 import json
 
@@ -9,10 +9,10 @@ class TestStatusMessage:
 
     def test_to_bytes_with_string_message(self):
         """Test serialization with a string message."""
-        from core.messages import StatusMessage
+        from server import StatusMessage
 
         msg = StatusMessage(status="running", message="Processing...")
-        result = msg.to_bytes()
+        result = msg.response()
 
         assert isinstance(result, bytes)
         parsed = json.loads(result.decode())
@@ -22,20 +22,20 @@ class TestStatusMessage:
 
     def test_to_bytes_with_empty_message(self):
         """Test serialization with default empty message."""
-        from core.messages import StatusMessage
+        from server import StatusMessage
 
         msg = StatusMessage(status="done")
-        result = msg.to_bytes()
+        result = msg.response()
 
         parsed = json.loads(result.decode())
         assert parsed["data"]["message"] == ""
 
     def test_to_bytes_with_dict_message(self):
         """Test serialization with a dict message."""
-        from core.messages import StatusMessage
+        from server import StatusMessage
 
         msg = StatusMessage(status="error", message={"code": 500, "reason": "Internal"})
-        result = msg.to_bytes()
+        result = msg.response()
 
         parsed = json.loads(result.decode())
         assert parsed["data"]["message"]["code"] == 500
@@ -46,10 +46,10 @@ class TestModelMessage:
 
     def test_to_bytes(self):
         """Test basic serialization."""
-        from core.messages import ModelMessage
+        from server import ModelMessage
 
         msg = ModelMessage(data={"content": "Hello", "role": "assistant"})
-        result = msg.to_bytes()
+        result = msg.response()
 
         parsed = json.loads(result.decode())
         assert parsed["type"] == "msg"
@@ -61,10 +61,10 @@ class TestNoRefMessage:
 
     def test_to_bytes(self):
         """Test basic serialization."""
-        from core.messages import NoRefMessage
+        from server import NoRefMessage
 
         msg = NoRefMessage(data={"reason": "No references found"})
-        result = msg.to_bytes()
+        result = msg.response()
 
         parsed = json.loads(result.decode())
         assert parsed["type"] == "noreference"

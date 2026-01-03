@@ -92,7 +92,10 @@ export class TesterSession {
                         if (!(msg.type && msg.data && msg.type === 'status' && msg.data.status === 'start')) {
                             throw TypeError('Failed to receive start message');
                         }
-                        this.activeSessionId = msg.data.session_id;
+                        const sessionId = msg.data?.session_id ?? msg.data?.message?.session_id;
+                        if (typeof sessionId === 'string' && sessionId.length > 0) {
+                            this.activeSessionId = sessionId;
+                        }
                         status = 'started';
                     } else if (status !== 'finished') {
                         // receive messages
@@ -164,7 +167,7 @@ export class TesterSession {
         this.currentRequest.destroy();
         this.finishActiveRequest?.();
     }
-    
+
     public async stopActiveSession(): Promise<void> {
         this.cancelCurrentQuery();
         await this.sendStopSignal();

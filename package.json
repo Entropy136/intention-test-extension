@@ -93,6 +93,5 @@
     "tree-sitter": "^0.21.1",
     "tree-sitter-java": "^0.21.0",
     "tree-sitter-python": "^0.21.0"
-  },
-  "publisher": "entropy136"
+  }
 }

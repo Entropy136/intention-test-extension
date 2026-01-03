@@ -1,19 +1,105 @@
 """
-Tests for app/server.py utility functions.
+Tests for backend/server.py endpoints and cancellation support.
 """
+
+from __future__ import annotations
+
+import http.client
+import json
+import socketserver
+import threading
+import time
+
 import pytest
 
 
-class TestValidateQueryPayload:
-    """Test the validate_query_payload function."""
+@pytest.fixture
+def http_server(monkeypatch):
+    import server
 
-    def test_valid_payload(self):
-        """Test a valid query payload."""
-        from app.server import validate_query_payload
+    def fake_start_query(self):
+        while not self.should_stop():
+            time.sleep(0.01)
+        raise server.GenerationCancelled()
 
-        payload = {
+    monkeypatch.setattr(server.ModelQuerySession, "start_query", fake_start_query)
+
+    with server.sessions_lock:
+        server.sessions.clear()
+
+    httpd = socketserver.ThreadingTCPServer(("localhost", 0), server.QueryHandler)
+    httpd.daemon_threads = True
+    httpd.allow_reuse_address = True
+
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        yield httpd.server_address[1], server
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+        with server.sessions_lock:
+            server.sessions.clear()
+
+
+def _post_json(port: int, path: str, payload: dict) -> http.client.HTTPResponse:
+    body = json.dumps(payload).encode("utf-8")
+    conn = http.client.HTTPConnection("localhost", port, timeout=2)
+    conn.request(
+        "POST",
+        path,
+        body=body,
+        headers={
+            "Content-Type": "application/json",
+            "Content-Length": str(len(body)),
+        },
+    )
+    return conn.getresponse()
+
+
+class TestHealthEndpoints:
+    def test_root_returns_ok(self, http_server):
+        port, _server = http_server
+        conn = http.client.HTTPConnection("localhost", port, timeout=2)
+        conn.request("GET", "/")
+        res = conn.getresponse()
+        assert res.status == 200
+        assert res.read().decode("utf-8") == "OK"
+
+    def test_health_returns_ok(self, http_server):
+        port, _server = http_server
+        conn = http.client.HTTPConnection("localhost", port, timeout=2)
+        conn.request("GET", "/health")
+        res = conn.getresponse()
+        assert res.status == 200
+        assert res.read().decode("utf-8") == "OK"
+
+
+class TestJunitVersionEndpoint:
+    def test_junit_version_updates_global(self, http_server):
+        port, server = http_server
+        res = _post_json(port, "/junitVersion", {"type": "change_junit_version", "data": 5})
+        assert res.status == 200
+        res.read()
+        assert server.global_junit_version == 5
+
+
+class TestStopEndpoint:
+    def test_stop_unknown_session_returns_404(self, http_server):
+        port, _server = http_server
+        res = _post_json(port, "/session/stop", {"session_id": "does-not-exist"})
+        assert res.status == 404
+        res.read()
+
+
+class TestSessionStopFlow:
+    def test_stop_request_cancels_session(self, http_server):
+        port, server = http_server
+
+        query_payload = {
             "type": "query",
-            "session_id": "test-session",
             "data": {
                 "target_focal_method": "test",
                 "target_focal_file": "Test.java",
@@ -23,97 +109,38 @@ class TestValidateQueryPayload:
             },
         }
 
-        session_id, data = validate_query_payload(payload)
-
-        assert session_id == "test-session"
-        assert data["target_focal_method"] == "test"
-
-    def test_invalid_type_raises(self):
-        """Test that invalid type raises ValueError."""
-        from app.server import validate_query_payload
-
-        payload = {"type": "invalid", "data": {}}
-
-        with pytest.raises(ValueError, match="Unsupported request type"):
-            validate_query_payload(payload)
-
-    def test_missing_data_raises(self):
-        """Test that missing data raises ValueError."""
-        from app.server import validate_query_payload
-
-        payload = {"type": "query", "data": "not_a_dict"}
-
-        with pytest.raises(ValueError, match="must be a JSON object"):
-            validate_query_payload(payload)
-
-    def test_missing_required_fields_raises(self):
-        """Test that missing required fields raises ValueError."""
-        from app.server import validate_query_payload
-
-        payload = {
-            "type": "query",
-            "data": {"target_focal_method": "test"},
-        }
-
-        with pytest.raises(ValueError, match="Missing required fields"):
-            validate_query_payload(payload)
-
-    def test_generates_session_id_when_missing(self):
-        """Test that session_id is generated when not provided."""
-        from app.server import validate_query_payload
-
-        payload = {
-            "type": "query",
-            "data": {
-                "target_focal_method": "test",
-                "target_focal_file": "Test.java",
-                "test_desc": "description",
-                "project_path": "/path",
-                "focal_file_path": "/path/Test.java",
+        body = json.dumps(query_payload).encode("utf-8")
+        conn = http.client.HTTPConnection("localhost", port, timeout=2)
+        conn.request(
+            "POST",
+            "/session",
+            body=body,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(body)),
             },
-        }
+        )
+        res = conn.getresponse()
+        assert res.status == 200
 
-        session_id, _ = validate_query_payload(payload)
+        start_line = res.readline()
+        start_msg = json.loads(start_line.decode("utf-8"))
+        session_id = start_msg["data"]["message"]["session_id"]
 
-        assert session_id is not None
-        assert len(session_id) > 0
+        stop_res = _post_json(port, "/session/stop", {"session_id": session_id})
+        assert stop_res.status == 200
+        stop_res.read()
 
+        finish_seen = False
+        for _ in range(200):
+            line = res.readline()
+            if not line:
+                break
+            msg = json.loads(line.decode("utf-8"))
+            if msg.get("type") == "status" and msg.get("data", {}).get("status") == "finish":
+                finish_seen = True
+                break
+        assert finish_seen is True
 
-class TestResponseStream:
-    """Test the ResponseStream class."""
-
-    def test_call_writes_data(self):
-        """Test that calling the stream writes data."""
-        from app.server import ResponseStream
-        from unittest.mock import MagicMock
-        from io import BytesIO
-
-        handler = MagicMock()
-        handler.wfile = BytesIO()
-
-        stream = ResponseStream(handler)
-        stream(b"test data")
-
-        handler.wfile.seek(0)
-        assert handler.wfile.read() == b"test data\n"
-
-
-class TestGenerateSessionId:
-    """Test the _generate_session_id function."""
-
-    def test_generates_unique_ids(self):
-        """Test that generated IDs are unique."""
-        from app.server import _generate_session_id
-
-        ids = [_generate_session_id() for _ in range(10)]
-
-        assert len(set(ids)) == 10  # All unique
-
-    def test_generates_hex_string(self):
-        """Test that generated ID is a hex string."""
-        from app.server import _generate_session_id
-
-        session_id = _generate_session_id()
-
-        assert len(session_id) == 32  # UUID hex is 32 chars
-        assert all(c in "0123456789abcdef" for c in session_id)
+        with server.sessions_lock:
+            assert session_id not in server.sessions

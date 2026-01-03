@@ -3,6 +3,7 @@
     --surface-card: var(--vscode-editorWidget-background, #ffffff);
     --surface-muted: var(--vscode-editor-inactiveSelectionBackground, rgba(0, 0, 0, 0.05));
     --border-color: var(--vscode-editorWidget-border, rgba(0, 0, 0, 0.08));
+    --border-strong: color-mix(in srgb, var(--border-color) 70%, transparent);
     --assistant-accent: var(--vscode-testing-iconPassed, #2ea043);
     --user-accent: var(--vscode-testing-iconQueued, #007acc);
     --code-block-bg: var(--vscode-editor-background, #1e1e1e);
@@ -10,6 +11,12 @@
     --code-block-border: var(--vscode-editor-lineHighlightBorder, rgba(255, 255, 255, 0.08));
     --link-color: var(--vscode-textLink-foreground, #3794ff);
     --toolbar-bg: var(--vscode-sideBarSectionHeader-background, rgba(255, 255, 255, 0.2));
+    --hint-text: var(--vscode-descriptionForeground, rgba(0, 0, 0, 0.6));
+    --danger: var(--vscode-charts-red, #f85149);
+    --warn: var(--vscode-charts-orange, #ffab70);
+    --ok: var(--vscode-testing-iconPassed, #2ea043);
+    --idle: var(--vscode-foreground, #4b5563);
+    --grid-line: color-mix(in srgb, var(--border-color) 60%, transparent);
 }
 
 html {
@@ -23,7 +30,10 @@ body {
     flex-direction: column;
     min-height: 100vh;
     overflow-y: auto;
-    background-color: var(--surface-background);
+    background:
+        radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--surface-muted) 55%, transparent), transparent 35%),
+        radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--surface-muted) 45%, transparent), transparent 32%),
+        linear-gradient(120deg, color-mix(in srgb, var(--surface-background) 92%, transparent), var(--surface-background));
     color: var(--vscode-sideBar-foreground, #1e1e1e);
     font-family: var(--vscode-font-family, "Segoe UI", "Helvetica Neue", Arial, sans-serif);
     gap: 16px;
@@ -45,9 +55,14 @@ body {
     padding: 20px;
     background-color: var(--surface-card);
     border-radius: 16px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-strong);
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px color-mix(in srgb, var(--border-color) 40%, transparent);
     box-sizing: border-box;
+    background-image: linear-gradient(90deg, transparent 0, transparent 95%, var(--grid-line) 95%),
+        linear-gradient(180deg, transparent 0, transparent 95%, var(--grid-line) 95%);
+    background-size: 16px 16px;
 }
 
 #no-message {
@@ -161,7 +176,7 @@ body {
     background-color: var(--code-block-bg);
     color: var(--code-block-foreground);
     border-radius: 12px;
-    padding: 16px 48px 16px 16px;
+    padding: 16px;
     margin: 0.6em 0;
     overflow-x: auto;
     border: 1px solid var(--code-block-border);
@@ -178,6 +193,16 @@ body {
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: anywhere;
+}
+
+.message pre.code-wrap-off code {
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+
+.message pre.code-wrap-off {
+    overflow-x: auto;
 }
 .message a {
     color: var(--link-color);
@@ -217,43 +242,6 @@ body {
 
 .typing span:nth-child(3) {
     animation-delay: 0.4s;
-}
-
-.open-code-button,
-.restart-from-here-button {
-    position: absolute;
-    top: 8px;
-    width: 28px;
-    height: 28px;
-    padding: 2px;
-    opacity: 0.5;
-    visibility: hidden;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background-color: rgba(0, 0, 0, 0.04);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-}
-
-.open-code-button {
-    right: 8px;
-}
-
-.restart-from-here-button {
-    right: 44px;
-}
-
-.open-code-button.show,
-.restart-from-here-button.show {
-    visibility: visible;
-}
-
-.open-code-button.show:hover,
-.restart-from-here-button.show:hover {
-    opacity: 1.0;
-    background-color: rgba(0, 0, 0, 0.08);
 }
 
 .hljs {
@@ -324,6 +312,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     background-color: var(--toolbar-bg);
     border: 1px solid var(--border-color);
     border-radius: 16px;
@@ -331,6 +320,7 @@ body {
     margin-bottom: 12px;
     gap: 12px;
     backdrop-filter: blur(12px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
 #toolbar .title {
@@ -346,12 +336,14 @@ body {
 
 #toolbar .tagline {
     font-size: 0.85rem;
-    color: var(--vscode-descriptionForeground, rgba(0, 0, 0, 0.6));
+    color: var(--hint-text);
 }
 
 .toolbar-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .toolbar-actions button {
@@ -363,6 +355,9 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .toolbar-actions button:hover {
@@ -385,4 +380,53 @@ body {
 .toolbar-actions button[data-action="clear-chat"] {
     background-image: linear-gradient(135deg, rgba(255, 99, 72, 0.15), transparent);
     border-color: rgba(255, 99, 72, 0.3);
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-muted) 65%, transparent);
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--idle);
+}
+
+.status-pill .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--idle);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--idle) 20%, transparent);
+}
+
+.status-pill[data-state="running"] {
+    color: var(--ok);
+}
+
+.status-pill[data-state="running"] .status-dot {
+    background: var(--ok);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent);
+}
+
+.status-pill[data-state="stopping"],
+.status-pill[data-state="stopped"] {
+    color: var(--warn);
+}
+
+.status-pill[data-state="stopping"] .status-dot,
+.status-pill[data-state="stopped"] .status-dot {
+    background: var(--warn);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+.status-pill[data-state="error"] {
+    color: var(--danger);
+}
+
+.status-pill[data-state="error"] .status-dot {
+    background: var(--danger);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 30%, transparent);
 }

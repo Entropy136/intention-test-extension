@@ -66,7 +66,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     return;
                 }
 
-                const connectToPort = vscode.workspace.getConfiguration('intention-test').get('port');
+                const connectToPort = vscode.workspace.getConfiguration('intentionTest').get('port');
                 if (typeof connectToPort !== 'number') {
                     vscode.window.showErrorMessage('Tester: Port number is not set');
                     return;
@@ -241,3 +241,5 @@ async function sendSessionState(
 ): Promise<void> {
     await ui.showMessage({ cmd: 'session-state', state, message });
 }
+
+
